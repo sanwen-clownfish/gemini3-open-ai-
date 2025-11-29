@@ -100,7 +100,7 @@ export const BodyModel: React.FC<{ selectedMuscle: MuscleId | null, onSelectMusc
   return (
     <div className="w-full h-full relative bg-gradient-to-b from-zinc-800 to-black">
       <Canvas shadows dpr={[1, 2]}>
-        <PerspectiveCamera makeDefault position={[0, 2, 6]} fov={40} />
+        <PerspectiveCamera makeDefault position={[0, 2, 8]} fov={50} near={0.01} far={30} />
         
         {/* Improved Lighting Setup for Visibility */}
         <ambientLight intensity={1.2} />
