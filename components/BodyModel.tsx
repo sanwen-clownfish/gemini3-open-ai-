@@ -16,12 +16,12 @@ interface BodyPartProps {
   shape?: 'capsule' | 'box' | 'sphere' | 'cylinder';
 }
 
-const BodyPart = ({ 
-  position, 
-  args, 
-  muscleId, 
-  selectedMuscle, 
-  onSelect, 
+const BodyPart = ({
+  position,
+  args,
+  muscleId,
+  selectedMuscle,
+  onSelect,
   rotation = [0, 0, 0],
   scale = [1, 1, 1],
   name,
@@ -33,11 +33,10 @@ const BodyPart = ({
   const isSelected = muscleId && selectedMuscle === muscleId;
   const isInteractive = !!muscleId;
 
-  // Lighter base colors for better visibility
   const baseColorInteractive = 0xa1a1aa; // Zinc 400 (Silver-ish)
-  const baseColorStatic = 0x52525b;      // Zinc 600 (Darker Grey)
-  const highlightColor = 0x60a5fa;       // Blue 400
-  const hoverColor = 0xe4e4e7;           // Zinc 200 (Almost white)
+  const baseColorStatic = 0x52525b; // Zinc 600 (Darker Grey)
+  const highlightColor = 0x60a5fa; // Blue 400
+  const hoverColor = 0xe4e4e7; // Zinc 200 (Almost white)
 
   useFrame((state) => {
     if (mesh.current) {
@@ -78,15 +77,15 @@ const BodyPart = ({
         {shape === 'box' && <boxGeometry args={args} />}
         {shape === 'sphere' && <sphereGeometry args={args} />}
         {shape === 'cylinder' && <cylinderGeometry args={args} />}
-        
+
         <meshStandardMaterial
-          roughness={0.4} // Slightly rougher to catch more light
-          metalness={0.3} // Reduced metalness so it's not too dark/reflective
-          color={isInteractive ? "#a1a1aa" : "#52525b"} // Initial color match
+          roughness={0.4}
+          metalness={0.3}
+          color={isInteractive ? "#a1a1aa" : "#52525b"}
         />
       </mesh>
       {hovered && isInteractive && name && (
-        <Html position={[0, 0, 0]} distanceFactor={8} center style={{pointerEvents: 'none', zIndex: 100}}>
+        <Html position={[0, 0, 0]} distanceFactor={8} center style={{ pointerEvents: 'none', zIndex: 100 }}>
           <div className="bg-white/90 text-black text-xs px-2 py-1.5 rounded-md border border-white/50 whitespace-nowrap font-bold shadow-xl backdrop-blur-md transform -translate-y-8">
             {name}
           </div>
@@ -97,11 +96,11 @@ const BodyPart = ({
 };
 
 export const BodyModel: React.FC<{ selectedMuscle: MuscleId | null, onSelectMuscle: (id: MuscleId) => void }> = ({ selectedMuscle, onSelectMuscle }) => {
-  
+
   return (
     <div className="w-full h-full relative bg-gradient-to-b from-zinc-800 to-black">
       <Canvas shadows dpr={[1, 2]}>
-        <PerspectiveCamera makeDefault position={[0, 1.5, 4.8]} fov={40} />
+        <PerspectiveCamera makeDefault position={[0, 2, 6]} fov={40} />
         
         {/* Improved Lighting Setup for Visibility */}
         <ambientLight intensity={1.2} />
