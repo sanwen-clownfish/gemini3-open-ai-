@@ -1,74 +1,186 @@
-import React, { useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Html } from '@react-three/drei';
+import React, { useState, useRef } from 'react';
+import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
+import { OrbitControls, PerspectiveCamera, Environment, ContactShadows, Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { MuscleId } from '../types';
 
-// Dummy data for muscle part names
-const muscleParts = [
-  { id: 'upper_chest', name: '上胸 (Upper Chest)', position: [0, 1.8, 0] },
-  { id: 'middle_chest', name: '中胸 (Middle Chest)', position: [0.2, 1.6, 0] },
-  { id: 'lower_chest', name: '下胸 (Lower Chest)', position: [0, 1.4, 0] },
-  { id: 'biceps', name: '肱二头肌 (Biceps)', position: [0.6, 1.5, 0] },
-  { id: 'triceps', name: '肱三头肌 (Triceps)', position: [-0.6, 1.5, 0] },
-  { id: 'abs', name: '腹部 (Abs)', position: [0, 1.2, 0] },
-  { id: 'quads', name: '股四头肌 (Quads)', position: [0.4, 0.2, 0] },
-  { id: 'hamstrings', name: '腘绳肌 (Hamstrings)', position: [-0.4, 0.2, 0] },
-];
+interface BodyPartProps {
+  position: [number, number, number];
+  args: any;
+  muscleId: MuscleId | null;
+  selectedMuscle: MuscleId | null;
+  onSelect: (id: MuscleId) => void;
+  rotation?: [number, number, number];
+  scale?: [number, number, number];
+  name?: string;
+  shape?: 'capsule' | 'box' | 'sphere' | 'cylinder';
+}
 
-const BodyPart = ({ part, onSelect }) => {
+const BodyPart = ({ 
+  position, 
+  args, 
+  muscleId, 
+  selectedMuscle, 
+  onSelect, 
+  rotation = [0, 0, 0],
+  scale = [1, 1, 1],
+  name,
+  shape = 'capsule'
+}: BodyPartProps) => {
   const [hovered, setHovered] = useState(false);
+  const mesh = useRef<THREE.Mesh>(null);
 
-  return (
-    <mesh
-      position={part.position}
-      onClick={() => onSelect(part.id)}
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
-    >
-      <sphereGeometry args={[0.2, 16, 16]} />
-      <meshStandardMaterial
-        color={hovered ? '#60a5fa' : '#a1a1aa'}
-        emissive={hovered ? '#1d4ed8' : '#000000'}
-        emissiveIntensity={0.3}
-      />
-      {hovered && (
-        <Html position={part.position} distanceFactor={10} center>
-          <div className="tooltip">{part.name}</div>
-        </Html>
-      )}
-    </mesh>
-  );
-};
+  const isSelected = muscleId && selectedMuscle === muscleId;
+  const isInteractive = !!muscleId;
 
-export const BodyModel = () => {
-  const [selectedPart, setSelectedPart] = useState(null);
+  // Lighter base colors for better visibility
+  const baseColorInteractive = 0xa1a1aa; // Zinc 400 (Silver-ish)
+  const baseColorStatic = 0x52525b;      // Zinc 600 (Darker Grey)
+  const highlightColor = 0x60a5fa;       // Blue 400
+  const hoverColor = 0xe4e4e7;           // Zinc 200 (Almost white)
 
-  const handleSelect = (id) => {
-    setSelectedPart(id);
+  useFrame((state) => {
+    if (mesh.current) {
+      const material = mesh.current.material as THREE.MeshStandardMaterial;
+
+      if (isSelected) {
+        material.emissiveIntensity = 0.6 + Math.sin(state.clock.elapsedTime * 4) * 0.2;
+        material.color.setHex(highlightColor);
+        material.emissive.setHex(0x1d4ed8); // Deep blue glow
+      } else if (hovered && isInteractive) {
+        material.emissiveIntensity = 0.3;
+        material.color.setHex(hoverColor);
+        material.emissive.setHex(0x000000);
+      } else {
+        material.emissiveIntensity = 0;
+        material.emissive.setHex(0x000000);
+        material.color.setHex(isInteractive ? baseColorInteractive : baseColorStatic);
+      }
+    }
+  });
+
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
+    if (isInteractive && muscleId) {
+      e.stopPropagation();
+      onSelect(muscleId);
+    }
   };
 
   return (
-    <div style={{ width: '100%', height: '100vh', background: '#1a1a1a' }}>
-      <Canvas camera={{ position: [3, 3, 6], fov: 50 }}>
-        {/* Lighting */}
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[5, 5, 5]} intensity={1.5} color="#ffffff" />
+    <group position={position} rotation={rotation} scale={scale}>
+      <mesh
+        ref={mesh as any}
+        onClick={handleClick}
+        onPointerOver={(e) => { e.stopPropagation(); isInteractive && setHovered(true); }}
+        onPointerOut={() => setHovered(false)}
+      >
+        {shape === 'capsule' && <capsuleGeometry args={args} />}
+        {shape === 'box' && <boxGeometry args={args} />}
+        {shape === 'sphere' && <sphereGeometry args={args} />}
+        {shape === 'cylinder' && <cylinderGeometry args={args} />}
+        
+        <meshStandardMaterial
+          roughness={0.4} // Slightly rougher to catch more light
+          metalness={0.3} // Reduced metalness so it's not too dark/reflective
+          color={isInteractive ? "#a1a1aa" : "#52525b"} // Initial color match
+        />
+      </mesh>
+      {hovered && isInteractive && name && (
+        <Html position={[0, 0, 0]} distanceFactor={8} center style={{pointerEvents: 'none', zIndex: 100}}>
+          <div className="bg-white/90 text-black text-xs px-2 py-1.5 rounded-md border border-white/50 whitespace-nowrap font-bold shadow-xl backdrop-blur-md transform -translate-y-8">
+            {name}
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+};
 
-        {/* Body Part Meshes */}
-        {muscleParts.map((part) => (
-          <BodyPart key={part.id} part={part} onSelect={handleSelect} />
-        ))}
+export const BodyModel: React.FC<{ selectedMuscle: MuscleId | null, onSelectMuscle: (id: MuscleId) => void }> = ({ selectedMuscle, onSelectMuscle }) => {
+  
+  return (
+    <div className="w-full h-full relative bg-gradient-to-b from-zinc-800 to-black">
+      <Canvas shadows dpr={[1, 2]}>
+        <PerspectiveCamera makeDefault position={[0, 1.5, 4.8]} fov={40} />
+        
+        {/* Improved Lighting Setup for Visibility */}
+        <ambientLight intensity={1.2} />
+        
+        {/* Main Front Light */}
+        <directionalLight position={[0, 2, 5]} intensity={2.0} color="#ffffff" />
+        
+        {/* Top Rim Light */}
+        <spotLight position={[0, 6, 0]} intensity={1.5} color="#ffffff" castShadow />
+        
+        {/* Side Fill Lights */}
+        <spotLight position={[5, 2, 5]} angle={0.6} penumbra={0.5} intensity={1.5} color="#bfdbfe" /> {/* Blue tint fill */}
+        <spotLight position={[-5, 2, 5]} angle={0.6} penumbra={0.5} intensity={1.5} color="#e4e4e7" /> {/* White fill */}
+        
+        {/* Back Light for rim effect */}
+        <pointLight position={[0, 2, -3]} intensity={1.5} color="#3b82f6" /> 
+        
+        <group position={[0, -1.2, 0]}>
+          {/* ================= HEAD ================= */}
+          <BodyPart position={[0, 3.9, 0]} args={[0.32, 0.45, 4, 16]} muscleId="head" name="头部/颈部" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+          
+          {/* ================= CHEST (DETAILED) ================= */}
+          <group position={[0, 0, 0]}>
+            {/* Upper Chest (Clavicular) - Angled */}
+            <BodyPart position={[-0.25, 3.25, 0.22]} args={[0.45, 0.2, 0.15]} shape="box" rotation={[0, 0, -0.2]} muscleId="upper_chest" name="上胸 (Upper)" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            <BodyPart position={[0.25, 3.25, 0.22]} args={[0.45, 0.2, 0.15]} shape="box" rotation={[0, 0, 0.2]} muscleId="upper_chest" name="上胸 (Upper)" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            {/* Middle Chest (Sternal) - Main Mass */}
+            <BodyPart position={[-0.22, 2.95, 0.28]} args={[0.42, 0.35, 0.18]} shape="box" muscleId="middle_chest" name="中胸 (Middle)" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            <BodyPart position={[0.22, 2.95, 0.28]} args={[0.42, 0.35, 0.18]} shape="box" muscleId="middle_chest" name="中胸 (Middle)" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            {/* Lower Chest (Costal) - Bottom Edge */}
+            <BodyPart position={[-0.25, 2.7, 0.25]} args={[0.4, 0.15, 0.12]} shape="box" rotation={[0, 0, 0.1]} muscleId="lower_chest" name="下胸 (Lower)" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            <BodyPart position={[0.25, 2.7, 0.25]} args={[0.4, 0.15, 0.12]} shape="box" rotation={[0, 0, -0.1]} muscleId="lower_chest" name="下胸 (Lower)" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            {/* Outer Chest - Vertical Definition */}
+            <BodyPart position={[-0.5, 2.95, 0.22]} args={[0.12, 0.5, 0.12]} shape="box" rotation={[0, 0, 0.1]} muscleId="outer_chest" name="外沿 (Outer)" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            <BodyPart position={[0.5, 2.95, 0.22]} args={[0.12, 0.5, 0.12]} shape="box" rotation={[0, 0, -0.1]} muscleId="outer_chest" name="外沿 (Outer)" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+          </group>
 
-        {/* Orbit controls */}
-        <OrbitControls enableZoom={true} />
+          {/* ================= BACK (DETAILED) ================= */}
+          <group>
+            {/* Traps - Upper Diamond */}
+            <BodyPart position={[0, 3.45, -0.2]} args={[0.5, 0.4, 0.2]} shape="cylinder" rotation={[0, 0, 0]} muscleId="traps" name="斜方肌" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            {/* Rhomboids - Middle Center */}
+            <BodyPart position={[0, 2.9, -0.25]} args={[0.4, 0.5, 0.1]} shape="box" muscleId="rhomboids" name="菱形肌" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            {/* Lats - The Wings */}
+            <BodyPart position={[-0.55, 2.5, -0.2]} args={[0.25, 1.1, 0.1]} shape="box" rotation={[0, 0, 0.2]} muscleId="lats" name="背阔肌" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            <BodyPart position={[0.55, 2.5, -0.2]} args={[0.25, 1.1, 0.1]} shape="box" rotation={[0, 0, -0.2]} muscleId="lats" name="背阔肌" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            {/* Teres - Upper Outer Back */}
+            <BodyPart position={[-0.6, 3.0, -0.15]} args={[0.15, 0.2, 0.1]} shape="box" rotation={[0, 0, 0.3]} muscleId="teres" name="大圆肌" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            <BodyPart position={[0.6, 3.0, -0.15]} args={[0.15, 0.2, 0.1]} shape="box" rotation={[0, 0, -0.3]} muscleId="teres" name="大圆肌" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+            {/* Lower Back */}
+            <BodyPart position={[0, 2.0, -0.25]} args={[0.25, 0.5, 0.15]} shape="box" muscleId="lower_back" name="竖脊肌" selectedMuscle={selectedMuscle} onSelect={onSelectMuscle} />
+          </group>
+        </group>
+
+        <ContactShadows opacity={0.4} scale={15} blur={2.5} far={4} color="#000000" />
+        <Environment preset="city" />
+        <OrbitControls minPolarAngle={Math.PI / 4} maxPolarAngle={Math.PI / 1.5} minDistance={3.5} maxDistance={9} enablePan={false} />
       </Canvas>
 
-      {selectedPart && (
-        <div style={{ position: 'absolute', top: 20, left: 20, color: 'white' }}>
-          <h2>你选择的部位: {muscleParts.find(part => part.id === selectedPart).name}</h2>
-          <p>开始专门的训练，增强 {muscleParts.find(part => part.id === selectedPart).name}</p>
-        </div>
-      )}
+      {/* Overlay UI */}
+      <div className="absolute top-4 left-4 z-10 pointer-events-none select-none">
+         <h1 className="font-bold text-2xl text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-200 to-white drop-shadow-lg">
+            3D 肌肉解剖 (Pro)
+         </h1>
+         <p className="text-xs text-blue-200/70 mt-1 max-w-[200px] leading-relaxed">
+            高精度分层模型。点击任意肌肉束（如肱二头肌长头、胸肌外沿）获取专家级指导。
+         </p>
+      </div>
+
+      <div className="absolute bottom-6 left-6 z-10 pointer-events-none flex flex-col gap-2">
+         <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-sm bg-[#a1a1aa] border border-zinc-500"></div>
+            <span className="text-[10px] text-zinc-300 uppercase tracking-widest">可交互部位</span>
+         </div>
+         <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-sm bg-blue-500 border border-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+            <span className="text-[10px] text-blue-300 uppercase tracking-widest">已选中目标</span>
+         </div>
+      </div>
     </div>
   );
 };
