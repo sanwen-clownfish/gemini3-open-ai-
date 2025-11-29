@@ -125,7 +125,13 @@ export const BodyModel: React.FC<{ selectedMuscle: MuscleId | null, onSelectMusc
             state.gl.setSize(state.size.width, state.size.height, false);
           }}
         >
-          <PerspectiveCamera makeDefault position={[0, 1.5, 4.8]} fov={40} />
+          <PerspectiveCamera
+            makeDefault
+            position={[0, 1.5, 4.8]}
+            fov={40}
+            near={0.01}
+            far={50}
+          />
           
           {/* Lighting */}
           <ambientLight intensity={1.0} />
