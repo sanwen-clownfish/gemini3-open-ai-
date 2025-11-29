@@ -165,11 +165,15 @@ export const ExercisePanel: React.FC<ExercisePanelProps> = ({ loading, exercises
             <div className="grid grid-cols-2 gap-4 mb-4">
                <div className="bg-zinc-950/50 rounded-lg p-3 border border-zinc-800/50">
                     <span className="text-xs text-zinc-500 block mb-1">建议组数/次数</span>
-                    <span className="text-sm font-medium text-zinc-200">{exercise.reps}</span>
+                    <span className="text-sm font-medium text-zinc-200">
+                        {exercise.setsReps || "3组 10次"}
+                    </span>
                </div>
                <div className="bg-zinc-950/50 rounded-lg p-3 border border-zinc-800/50">
                     <span className="text-xs text-zinc-500 block mb-1">训练重点</span>
-                    <span className="text-sm font-medium text-zinc-200">精准刺激</span>
+                    <span className="text-sm font-medium text-zinc-200">
+                      {exercise.focus || "精准刺激"}
+                    </span>
                </div>
             </div>
 
@@ -179,9 +183,12 @@ export const ExercisePanel: React.FC<ExercisePanelProps> = ({ loading, exercises
                     <Star className="w-4 h-4 fill-blue-400" />
                     <span className="font-bold text-sm">推荐指数</span>
                 </div>
-                <span className="text-2xl font-bold text-white">{exercise.rating}<span className="text-zinc-600 text-base font-normal">/10</span></span>
+                <span className="text-2xl font-bold text-white">
+                    {exercise.score}
+                    <span className="text-zinc-600 text-base font-normal">/10</span>
+                </span>
               </div>
-              <RatingBar rating={exercise.rating} />
+              <RatingBar rating={exercise.score || 0} />
             </div>
           </div>
         ))}
